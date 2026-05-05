@@ -22,17 +22,19 @@ export default {
 };
 
 async function generateQRCode({ text, size, margin }) {
-	const headers = { 'Content-Type': 'image/png' };
-	const options = {};
-	if (size && !isNaN(parseInt(size))) {
-		options.size = parseInt(size);
-	}
+	const headers = { 'Content-Type': 'image/svg+xml' };
+	const options = { type: 'svg' };
 	if (margin && !isNaN(parseInt(margin))) {
 		options.margin = parseInt(margin);
 	}
-	const qr_png = qr.imageSync(text || 'NULL', options);
+	let qr_svg = qr.imageSync(text || 'NULL', options);
 
-	return new Response(qr_png, { headers });
+	if (size && !isNaN(parseInt(size))) {
+		const exactSize = parseInt(size);
+		qr_svg = qr_svg.replace('<svg ', `<svg width="${exactSize}" height="${exactSize}" `);
+	}
+
+	return new Response(qr_svg, { headers });
 }
 
 const landing = `
