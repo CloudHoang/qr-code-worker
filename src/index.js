@@ -9,7 +9,8 @@ export default {
 		} else if (request.method === 'GET' && url.searchParams.has('text')) {
 			const text = url.searchParams.get('text');
 			const size = url.searchParams.get('size');
-			return generateQRCode({ text, size });
+			const margin = url.searchParams.get('margin');
+			return generateQRCode({ text, size, margin });
 		}
 
 		return new Response(landing, {
@@ -20,11 +21,14 @@ export default {
 	},
 };
 
-async function generateQRCode({ text, size }) {
+async function generateQRCode({ text, size, margin }) {
 	const headers = { 'Content-Type': 'image/png' };
 	const options = {};
 	if (size && !isNaN(parseInt(size))) {
 		options.size = parseInt(size);
+	}
+	if (margin && !isNaN(parseInt(margin))) {
+		options.margin = parseInt(margin);
 	}
 	const qr_png = qr.imageSync(text || 'NULL', options);
 
