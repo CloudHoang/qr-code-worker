@@ -1,4 +1,5 @@
 const qr = require('qr-image');
+const pngLib = require('qr-image/lib/png');
 
 export default {
 	async fetch(request, env, ctx) {
@@ -22,19 +23,47 @@ export default {
 };
 
 async function generateQRCode({ text, size, margin }) {
-	const headers = { 'Content-Type': 'image/svg+xml' };
-	const options = { type: 'svg' };
-	if (margin && !isNaN(parseInt(margin))) {
-		options.margin = parseInt(margin);
-	}
-	let qr_svg = qr.imageSync(text || 'NULL', options);
-
+	const headers = { 'Content-Type': 'image/png' };
+	let exactSize = null;
+	let marginVal = 4; // default for png in qr-image
+    
 	if (size && !isNaN(parseInt(size))) {
-		const exactSize = parseInt(size);
-		qr_svg = qr_svg.replace('<svg ', `<svg width="${exactSize}" height="${exactSize}" `);
+		exactSize = parseInt(size);
+	}
+	if (margin && !isNaN(parseInt(margin))) {
+		marginVal = parseInt(margin);
 	}
 
-	return new Response(qr_svg, { headers });
+	let buffer;
+
+	if (exactSize !== null) {
+		const matrix = qr.matrix(text || 'NULL');
+		const N = matrix.length;
+		const num_modules = N + 2 * marginVal;
+		const X = exactSize;
+		const data = Buffer.alloc((X + 1) * X);
+		data.fill(255);
+		for (let i = 0; i < X; i++) {
+			data[i * (X + 1)] = 0;
+		}
+		for (let y = 0; y < X; y++) {
+			for (let x = 0; x < X; x++) {
+				const module_x = Math.floor(x * num_modules / X) - marginVal;
+				const module_y = Math.floor(y * num_modules / X) - marginVal;
+				if (module_x >= 0 && module_x < N && module_y >= 0 && module_y < N && matrix[module_x][module_y]) {
+					data[y * (X + 1) + x + 1] = 0;
+				}
+			}
+		}
+		const stream = [];
+		pngLib.png({ data, size: X }, stream);
+		buffer = Buffer.concat(stream.filter(Boolean));
+	} else {
+		const options = { margin: marginVal };
+		buffer = qr.imageSync(text || 'NULL', options);
+	}
+
+	return new Response(buffer, { headers });
 }
 
 const landing = `
